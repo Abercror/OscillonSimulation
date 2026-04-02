@@ -29,14 +29,14 @@ public:
 
     void inflationaryPotentialSelector(){
         const std::unordered_map<std::string, Func> inflationaryPotentials = {
-            {"T-Model", InflationPotentials<StateType, Scalar>::tModel},
-            {"E-model", InflationPotentials<StateType, Scalar>::eModel},
-            {"Axion Cosine", InflationPotentials<StateType, Scalar>::axionCosine},
+            {"T-Model", InflationPotentials<Scalar>::tModel},
+            {"E-model", InflationPotentials<Scalar>::eModel},
+            {"Axion Cosine", InflationPotentials<Scalar>::axionCosine},
         };
         const std::unordered_map<std::string, Func> inflationaryPotentialDerivatives = {
-            {"T-Model", DifferentiatedInflationPotentials<StateType, Scalar>::tModel},
-            {"E-model", DifferentiatedInflationPotentials<StateType, Scalar>::eModel},
-            {"Axion Cosine", DifferentiatedInflationPotentials<StateType, Scalar>::axionCosine},
+            {"T-Model", DifferentiatedInflationPotentials<Scalar>::tModel},
+            {"E-model", DifferentiatedInflationPotentials<Scalar>::eModel},
+            {"Axion Cosine", DifferentiatedInflationPotentials<Scalar>::axionCosine},
         };
         this->m_inflationPotential = inflationaryPotentials.at(this->m_inflationModel);
         this->m_inflationPotentialDerivative = inflationaryPotentialDerivatives.at(this->m_inflationModel);
