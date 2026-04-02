@@ -10,7 +10,7 @@ struct VectorTraits {
     using Scalar = T;
     using varStruct = OscillonSpacetimeVariables<Scalar>;
     using StateType = lattice<T>;
-    using Func = std::function<void(const StateType&, StateType&)>;
+    using Func = std::function<void(const Scalar&, Scalar&)>;
     using Func2 = std::function<void(Func, varStruct)>;
 };
 

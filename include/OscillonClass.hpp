@@ -29,7 +29,7 @@ struct OscillonData{
 
 
 template <typename Traits>
-class Oscillon: public NumericalMethods<Traits> {
+class Oscillon {
 protected:
     using Scalar = typename Traits::Scalar;
     using Func = typename Traits::Func;
@@ -72,13 +72,10 @@ public:
         this->m_history.reserveMemory(totalSteps);
     }
 
-    void phiSecondDifferential(Func const &potentialDerivative, auto const &structVariables){
-        StateType const &phi = this->m_phi;
-        StateType const &dPhi = this->m_dPhi;
+    void leapfrogIntegration(Func const &potentialDerivative, auto const &structVariables, Scalar const &delta){
+        StateType &phi = this->m_phi;
+        StateType &dPhi = this->m_dPhi;
         StateType const &laplacianPhi = this->m_phiLaplacian;
-
-        potentialDerivative(phi, this->m_inflationPotentialDerivative);
-
         StateType &inflationPotentialDerivative = this->m_inflationPotentialDerivative;
 
         Scalar const &hubbleParameter = structVariables.m_hubbleParameter;
@@ -86,12 +83,21 @@ public:
 
         Scalar const scaleFactor2 = scaleFactor * scaleFactor;
         Scalar const hubbleTerm = Scalar(3) * hubbleParameter;
+        Scalar const halfDelta = delta / Scalar(2);
 
         StateType &secondDerivative = this->m_d2Phi;
         #pragma omp parallel for
         for (int i = 0; i < phi.field.size(); ++i) {
+            potentialDerivative(phi[i], inflationPotentialDerivative[i]);
             secondDerivative[i] = laplacianPhi[i] / scaleFactor2 - hubbleTerm * dPhi[i] - inflationPotentialDerivative[i];
 
+            dPhi[i] += secondDerivative[i] * halfDelta;
+            phi[i] += dPhi[i] * delta;
+
+            potentialDerivative(phi[i], inflationPotentialDerivative[i]);
+            secondDerivative[i] = laplacianPhi[i] / scaleFactor2 - hubbleTerm * dPhi[i] - inflationPotentialDerivative[i];
+
+            dPhi[i] += secondDerivative[i] * halfDelta;
         }
     }
 
@@ -108,11 +114,14 @@ public:
         }
     }
 
-    void potentialKineticEnergyDensity(Scalar const &stepCount, Func const &inflationPotentialFunc){
+    void potentialKineticEnergyDensity(Scalar const &stepCount, Func const &inflationPotentialFunc) {
         StateType const &phi = this->m_phi;
         StateType &inflationPotential = this->m_inflationPotential;
 
-        inflationPotentialFunc(phi, inflationPotential);
+        #pragma omp parallel for
+        for (int i = 0; i < phi.field.size(); ++i){
+            inflationPotentialFunc(phi[i], inflationPotential[i]);
+        }
 
         this->m_energyDensity = this->m_inflationPotential.mean();
 
@@ -139,7 +148,8 @@ public:
     void updateOscillon(Scalar const &stepCount, Scalar const &timeDelta, Func &inflationPotential, Func &inflationPotentialDerivative, auto const &structVariables){
         auto deltaPosition = Scalar(1)/(this->m_gridSize);
         this->determineLaplacian(deltaPosition);
-        this->leapfrog2ndOrder(this->m_phi, this->m_dPhi, this->m_d2Phi, timeDelta, [this, &inflationPotentialDerivative, &structVariables](){ return this->phiSecondDifferential(inflationPotentialDerivative, structVariables); });
+        // this->leapfrog2ndOrder(this->m_phi, this->m_dPhi, this->m_d2Phi, timeDelta, [this, &inflationPotentialDerivative, &structVariables](){ return this->phiSecondDifferential(inflationPotentialDerivative, structVariables); });
+        this->leapfrogIntegration(inflationPotentialDerivative, structVariables, timeDelta);
         this->potentialKineticEnergyDensity(stepCount, inflationPotential);
         this->writeToHistory();
     }
