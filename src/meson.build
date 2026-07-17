@@ -6,6 +6,6 @@ executable(
     'OscillonSimulation',
     src_files,
     dependencies: [openmp_dep],
-    include_directories: [homebrew_inc, openmp_inc, hdf5_inc, include],
+    include_directories: [homebrew_inc, openmp_inc, include],
     install : true
 )

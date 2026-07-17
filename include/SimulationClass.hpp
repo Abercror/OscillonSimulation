@@ -1,31 +1,30 @@
 #pragma once
 #include <filesystem>
-#include "OscillonClass.hpp"
+#include "InflatonFieldClass.hpp"
 #include "SpacetimeClass.hpp"
 #include "InflationPotentials.hpp"
-#include "OscillonSpacetimeVariablesStruct.hpp"
+#include "InflatonSpacetimeVariablesStruct.hpp"
 #include <string>
 #include <unordered_map>
 
 
 template <typename VectorTraits, typename ScalarTraits>
 class Simulation{
-public:
-    using VectorT = VectorTraits;
-    using ScalarT = ScalarTraits;
-    using Scalar = typename VectorT::Scalar;
-    using Func = typename VectorT::Func;
-    using StateType = typename VectorT::StateType;
+protected:
+    using Scalar = typename VectorTraits::Scalar;
+    using Func = typename VectorTraits::Func;
+    using StateType = typename VectorTraits::StateType;
 
-    Oscillon<VectorT> m_oscillonField;
-    SpacetimeParameters<ScalarT> m_spacetimeParameters;
+private:
+    InflatonField<VectorTraits> m_inflatonField;
+    SpacetimeParameters<ScalarTraits> m_spacetimeParameters;
     Func m_inflationPotential;
     Func m_inflationPotentialDerivative;
     Scalar m_timeDelta;
     std::string m_inflationModel;
 
-
-    Simulation(Oscillon<VectorT> &oscillonField, SpacetimeParameters<ScalarT> &spacetimeParameters, Scalar timeDelta, std::string const &inflationModel): m_oscillonField(oscillonField), m_spacetimeParameters(spacetimeParameters), m_timeDelta(timeDelta), m_inflationModel(inflationModel) {}
+public:
+    Simulation(InflatonField<VectorTraits> &inflatonField, SpacetimeParameters<ScalarTraits> &spacetimeParameters, Scalar timeDelta, std::string const &inflationModel): m_inflatonField(inflatonField), m_spacetimeParameters(spacetimeParameters), m_timeDelta(timeDelta), m_inflationModel(inflationModel) {}
 
     void inflationaryPotentialSelector(){
         const std::unordered_map<std::string, Func> inflationaryPotentials = {
@@ -44,19 +43,19 @@ public:
 
 
     void run(Scalar const &totalSteps){
-        OscillonSpacetimeVariables<Scalar> structVariables;
-        auto &oscillon = this->m_oscillonField;
+        InflatonSpacetimeVariables<Scalar> structVariables;
+        auto &inflatonField = this->m_inflatonField;
         auto &spacetimeParameters = this->m_spacetimeParameters;
         this->inflationaryPotentialSelector();
-        oscillon.setLength(totalSteps);
+        inflatonField.setLength(totalSteps);
         spacetimeParameters.setLength(totalSteps);
 
         for(Scalar stepCount = 0; stepCount < totalSteps; ++stepCount){
-            structVariables.getOscillonSpacetimeVariables(oscillon, spacetimeParameters);
+            structVariables.getInflatonSpacetimeVariables(inflatonField, spacetimeParameters);
 
             spacetimeParameters.updateSpacetime(this->m_timeDelta, structVariables);
 
-            oscillon.updateOscillon(stepCount, this->m_timeDelta, this->m_inflationPotential, this->m_inflationPotentialDerivative, structVariables);
+            inflatonField.updateInflatonField(stepCount, this->m_timeDelta, this->m_inflationPotential, this->m_inflationPotentialDerivative, structVariables);
         }
     }
 };

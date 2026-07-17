@@ -2,6 +2,7 @@
 #include "NumericalMethodsClass.hpp"
 #include <vector>
 #include <cmath>
+#include <iostream>
 
 
 template <typename Scalar>

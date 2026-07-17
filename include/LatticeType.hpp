@@ -1,28 +1,28 @@
 #pragma once
 #include <vector>
-#include <cmath>
+#include <cstddef>
 
 template <typename T>
 struct lattice {
-    size_t Nx, Ny, Nz;
-    size_t ySkip, zSkip;
+    std::size_t Nx, Ny, Nz;
+    std::size_t ySkip, zSkip;
     std::vector<T> field;
 
-    lattice(size_t const x, size_t const y, size_t const z): Nx(x), Ny(y), Nz(z), ySkip(x), zSkip(x * y), field(x*y*z) {}
+    lattice(std::size_t const x, std::size_t const y, std::size_t const z): Nx(x), Ny(y), Nz(z), ySkip(x), zSkip(x * y), field(x*y*z) {}
 
-    const T &operator()(size_t const x, size_t const y, size_t const z) const {
+    T const &operator()(std::size_t const x, std::size_t const y, std::size_t const z) const {
         return field[x + ySkip * y + zSkip * z];
     }
 
-    T &operator()(size_t const x, size_t const y, size_t const z) {
+    T &operator()(std::size_t const x, std::size_t const y, std::size_t const z) {
         return field[x + ySkip * y + zSkip * z];
     }
 
-    const T &operator[](size_t const x) const {
+    T const &operator[](std::size_t const x) const {
         return field[x];
     }
 
-    T &operator[](size_t const x) {
+    T &operator[](std::size_t const x) {
         return field[x];
     }
 
@@ -35,66 +35,69 @@ struct lattice {
     T mean() const {
         T total{};
         #pragma omp parallel for
-        for (int i = 0; i < field.size(); ++i) {
+        for (std::size_t i = 0; i < field.size(); ++i) {
             total += field[i];
         }
         return total / field.size();
     }
 
-    lattice<T> &operator+=(const lattice<T> &rhs) {
+    T size() const {
+        return field.size();
+    }
+
+    lattice<T> &operator+=(lattice<T> const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] += rhs.field[i];
         return *this;
     }
 
-    lattice<T> &operator-=(const lattice<T> &rhs) {
+    lattice<T> &operator-=(lattice<T> const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] -= rhs.field[i];
         return *this;
     }
 
-    lattice<T> &operator*=(const lattice<T> &rhs) {
+    lattice<T> &operator*=(lattice<T> const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] *= rhs.field[i];
         return *this;
     }
 
-    lattice<T> &operator/=(const lattice<T> &rhs) {
+    lattice<T> &operator/=(lattice<T> const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] /= rhs.field[i];
         return *this;
     }
 
 
-
-    lattice<T> &operator+=(const T &rhs) {
+    lattice<T> &operator+=(T const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] += rhs;
         return *this;
     }
 
-    lattice<T> &operator-=(const T &rhs) {
+    lattice<T> &operator-=(T const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] -= rhs;
         return *this;
     }
 
-    lattice<T> &operator*=(const T &rhs) {
+    lattice<T> &operator*=(T const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] *= rhs;
         return *this;
     }
 
-    lattice<T> &operator/=(const T &rhs) {
+    lattice<T> &operator/=(T const &rhs) {
         #pragma omp parallel for
-        for (size_t i = 0; i < field.size(); ++i)
+        for (std::size_t i = 0; i < field.size(); ++i)
             field[i] /= rhs;
         return *this;
     }
@@ -103,49 +106,49 @@ struct lattice {
 };
 
 template <typename T>
-lattice<T> operator+(lattice<T> lhs, const lattice<T> &rhs) {
+lattice<T> operator+(lattice<T> lhs, lattice<T> const &rhs) {
     lhs += rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator-(lattice<T> lhs, const lattice<T> &rhs) {
+lattice<T> operator-(lattice<T> lhs, lattice<T> const &rhs) {
     lhs -= rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator*(lattice<T> lhs, const lattice<T> &rhs) {
+lattice<T> operator*(lattice<T> lhs, lattice<T> const &rhs) {
     lhs *= rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator/(lattice<T> lhs, const lattice<T> &rhs) {
+lattice<T> operator/(lattice<T> lhs, lattice<T> const &rhs) {
     lhs /= rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator+(lattice<T> lhs, const T &rhs) {
+lattice<T> operator+(lattice<T> lhs, T const &rhs) {
     lhs += rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator-(lattice<T> lhs, const T &rhs) {
+lattice<T> operator-(lattice<T> lhs, T const &rhs) {
     lhs -= rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator*(lattice<T> lhs, const T &rhs) {
+lattice<T> operator*(lattice<T> lhs, T const &rhs) {
     lhs *= rhs;
     return lhs;
 }
 
 template <typename T>
-lattice<T> operator/(lattice<T> lhs, const T &rhs) {
+lattice<T> operator/(lattice<T> lhs, T const &rhs) {
     lhs /= rhs;
     return lhs;
 }
