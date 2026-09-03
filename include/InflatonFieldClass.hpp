@@ -1,7 +1,8 @@
 #pragma once
 #include "NumericalMethodsClass.hpp"
-#include "GlobalVariables.hpp"
+#include "SimulationDataSets.hpp"
 #include <vector>
+#include <array>
 #include <functional>
 #include <cstddef>
 #include <H5Cpp.h>
@@ -10,24 +11,37 @@ using namespace H5;
 template <typename StateType, typename Scalar>
 struct inflatonFieldData{
     std::vector<StateType> phiValues;
-    std::vector<StateType> dPhiValues;
-    std::vector<StateType> d2PhiValues;
-    std::vector<StateType> phiLaplacianValues;
     std::vector<StateType> inflationPotentialValues;
-    std::vector<StateType> inflationPotentialDerivativeValues;
     std::vector<StateType> energyDensityValues;
     std::vector<StateType> energyOverdensityValues;
-    std::vector<Scalar> pressureValues;
+    std::vector<Scalar> averageEnergyDensity;
+
+    // std::vector<StateType> dPhiValues;
+    // std::vector<StateType> d2PhiValues;
+    // std::vector<StateType> phiLaplacianValues;
+    // std::vector<StateType> inflationPotentialDerivativeValues;
+    // std::vector<Scalar> pressureValues;
+
     
-    void reserveMemory(Scalar const &totalSteps){
-        phiValues.reserve(totalSteps);
-        dPhiValues.reserve(totalSteps);
-        phiLaplacianValues.reserve(totalSteps);
-        inflationPotentialValues.reserve(totalSteps);
-        inflationPotentialDerivativeValues.reserve(totalSteps);
-        energyDensityValues.reserve(totalSteps);
-        energyOverdensityValues.reserve(totalSteps);
-        pressureValues.reserve(totalSteps);
+    void resizeBuffer(hsize_t const &bufferSize){
+        phiValues.resize(bufferSize);
+        inflationPotentialValues.resize(bufferSize);
+        energyDensityValues.resize(bufferSize);
+        energyOverdensityValues.resize(bufferSize);
+        averageEnergyDensity.resize(bufferSize);
+
+        // dPhiValues.resize(bufferSize);
+        // phiLaplacianValues.resize(bufferSize);
+        // inflationPotentialDerivativeValues.resize(bufferSize);
+        // pressureValues.resize(bufferSize);
+    }
+
+    void wipeBuffer() {
+        phiValues.clear();
+        inflationPotentialValues.clear();
+        energyDensityValues.clear();
+        energyOverdensityValues.clear();
+        averageEnergyDensity.clear();
     }
 };
 
@@ -36,8 +50,9 @@ template <typename Traits>
 class InflatonField: public NumericalMethods<Traits> {
 protected:
     using Scalar = typename Traits::Scalar;
-    using Func = typename Traits::Func;
     using StateType = typename Traits::StateType;
+    using Func = typename Traits::Func;
+
 
 private:
     StateType m_phi;
@@ -47,40 +62,48 @@ private:
     StateType m_inflationPotential;
     StateType m_inflationPotentialDerivative;
     StateType m_energyDensity;
-    StateType m_energyOverdensities;
+    StateType m_energyOverDensity;
     Scalar m_averageEnergyDensity;
     StateType m_kineticEnergyDensity;
     StateType m_potentialEnergyDensity;
     Scalar m_pressure;
     Scalar m_gridSize;
-    inflatonFieldData<StateType, Scalar> m_history;
+    inflatonFieldData<StateType, Scalar> m_buffer;
+    SimulationDataSets m_dataSets;
 
 public:
-    InflatonField(
-        StateType phi,
-        StateType dPhi,
-        StateType d2Phi,
-        StateType phiLaplacian,
-        StateType inflationPotential,
-        StateType inflationPotentialDerivative,
-        StateType energyDensity,
-        StateType energyOverdensity,
-        StateType kineticEnergyDensity,
-        StateType potentialEnergyDensity,
-        Scalar gridSize,
-        inflatonFieldData<StateType, Scalar> history):
-            m_phi(phi),
-            m_dPhi(dPhi),
-            m_d2Phi(d2Phi),
-            m_phiLaplacian(phiLaplacian),
-            m_inflationPotential(inflationPotential),
-            m_inflationPotentialDerivative(inflationPotentialDerivative),
-            m_energyDensity(energyDensity),
-            m_energyOverdensities(energyOverdensity),
-            m_kineticEnergyDensity(kineticEnergyDensity),
-            m_potentialEnergyDensity(potentialEnergyDensity),
-            m_gridSize(gridSize),
-            m_history(history) {}
+    InflatonField(Scalar gridSize, SimulationDataSets &dataSets) {
+        StateType phi(gridSize, gridSize, gridSize);
+        StateType dPhi(gridSize, gridSize, gridSize);
+        StateType d2Phi(gridSize, gridSize, gridSize);
+        StateType phiLaplacian(gridSize, gridSize, gridSize);
+        StateType inflationPotential(gridSize, gridSize, gridSize);
+        StateType inflationPotentialDerivative(gridSize, gridSize, gridSize);
+        StateType energyDensity(gridSize, gridSize, gridSize);
+        Scalar averageEnergyDensity = 0;
+        StateType energyOverDensity(gridSize, gridSize, gridSize);
+        StateType kineticEnergyDensity(gridSize, gridSize, gridSize);
+        StateType potentialEnergyDensity(gridSize, gridSize, gridSize);
+        Scalar pressure = 0.0;
+        inflatonFieldData<StateType, Scalar> buffer;
+
+        this->m_phi = phi;
+        this->m_dPhi = dPhi;
+        this->m_d2Phi = d2Phi;
+        this->m_phiLaplacian = phiLaplacian;
+        this->m_inflationPotential = inflationPotential;
+        this->m_inflationPotentialDerivative = inflationPotentialDerivative;
+        this->m_energyDensity = energyDensity;
+        this->m_averageEnergyDensity = averageEnergyDensity;
+        this->m_energyOverDensity = energyOverDensity;
+        this->m_kineticEnergyDensity = kineticEnergyDensity;
+        this->m_potentialEnergyDensity = potentialEnergyDensity;
+        this->m_pressure = pressure;
+        this->m_buffer = buffer;
+
+        this->m_gridSize = gridSize;
+        this->m_dataSets = dataSets;
+    }
 
 
     Scalar getPhiDerivativeMean() const {
@@ -89,10 +112,12 @@ public:
     }
     Scalar getPressure() const { return m_pressure; }
     Scalar getAverageEnergyDensity() const { return m_averageEnergyDensity; }
+    inflatonFieldData<StateType, Scalar> getBuffer() const { return this->m_buffer; }
 
-    void setLength(Scalar const &totalSteps){
-        this->m_history.reserveMemory(totalSteps);
+    void setLength(hsize_t const &bufferSize){
+        this->m_buffer.resizeBuffer(bufferSize);
     }
+
 
     void phiSecondDifferential(Func const &potentialDerivative, auto const &structVariables){
         StateType const &phi = this->m_phi;
@@ -149,7 +174,7 @@ public:
 
         #pragma omp parallel for
         for (std::size_t i = 0; i < phi.size(); ++i) {
-            this->m_energyOverdensities[i] = this->m_energyDensity[i] / this->m_averageEnergyDensity;
+            this->m_energyOverDensity[i] = this->m_energyDensity[i] / this->m_averageEnergyDensity;
         }
 
         #pragma omp parallel for
@@ -160,64 +185,77 @@ public:
     }
 
 
-    void writeToHistory() {
-        // this->m_history.phiValues.push_back(this->m_phi);
-        // this->m_history.dPhiValues.push_back(this->m_dPhi);
-        // this->m_history.phiLaplacianValues.push_back(this->m_phiLaplacian);
-        // this->m_history.pressureValues.push_back(this->m_pressure);
-        this->m_history.energyDensityValues.push_back(this->m_energyDensity);
-        this->m_history.energyOverdensityValues.push_back(this->m_energyOverdensities);
-        // this->m_history.inflationPotentialValues.push_back(this->m_inflationPotential);
-        // this->m_history.inflationPotentialDerivativeValues.push_back(this->m_inflationPotentialDerivative);
-        // this->m_history.kineticEnergyDensity.push_back(this->m_kineticEnergyDensity);
-        // this->m_history.potentialEnergyDensity.push_back(this->m_potentialEnergyDensity);
+    void writeToBuffer(auto const &index) {
+        this->m_buffer.phiValues[index] = this->m_phi;
+        this->m_buffer.energyDensityValues[index] = this->m_energyDensity;
+        this->m_buffer.energyOverdensityValues[index] = this->m_energyOverDensity;
+        this->m_buffer.inflationPotentialValues[index] = this->m_inflationPotential;
+        this->m_buffer.averageEnergyDensity[index] = this->m_averageEnergyDensity;
+
+        // this->m_buffer.dPhiValues.push_back(this->m_dPhi);
+        // this->m_buffer.phiLaplacianValues.push_back(this->m_phiLaplacian);
+        // this->m_buffer.pressureValues.push_back(this->m_pressure);
+        // this->m_buffer.inflationPotentialDerivativeValues.push_back(this->m_inflationPotentialDerivative);
+        // this->m_buffer.kineticEnergyDensity.push_back(this->m_kineticEnergyDensity);
+        // this->m_buffer.potentialEnergyDensity.push_back(this->m_potentialEnergyDensity);
     }
 
 
-    int writeFieldsToFile(Scalar const &bufferSize) {
+    void writeFieldsToFile(DataSet &dataSet, auto &buffer, auto const &fieldStart, auto const &fieldCount) {
+        hsize_t start[2] = {fieldStart[0], fieldStart[1]};
+        auto size = buffer.size();
 
-        int data[bufferSize];
+        for (std::size_t i = 0; i < size; ++i) {
+            DataSpace fileSpace = dataSet.getSpace();
+            fileSpace.selectHyperslab(H5S_SELECT_SET, fieldCount, start);
+            DataSpace memorySpace(2, fieldCount);
+            dataSet.write(buffer[i].data(), PredType::NATIVE_DOUBLE, memorySpace, fileSpace);
 
-        for (int i = 0; i < bufferSize+1; i++) {
-            data[i] = this->m_history.phiValues[i];
+            start[0] +=1;
         }
+    }
 
-        try {
-            Exception::dontPrint();
+    void testing(DataSet &dataSet, auto &buffer, auto const &fieldStart, auto const &fieldCount, auto const &name) {
+        DataSpace fileSpace = dataSet.getSpace();
 
-            H5File file(FILE_NAME, H5F_ACC_RDWR);
+        hsize_t dims[2];
+        fileSpace.getSimpleExtentDims(dims);
 
-            DataSet dataSet = file.openDataSet(DATASET_NAME);
+        std::cout
+            << " name = " << name
+            << " dims = [" << dims[0] << ", " << dims[1] << "]"
+            << " start = [" << fieldStart[0] << ", " << fieldStart[1] << "]"
+            << " count = [" << fieldCount[0] << ", " << fieldCount[1] << "]"
+            << std::endl;
+    }
 
-            dataSet.write(data, PredType::NATIVE_DOUBLE);
-        }
+    void writeDoubleToFile(DataSet &dataSet, auto &buffer, auto const &start, auto const &count) {
+        DataSpace fileSpace = dataSet.getSpace();
+        fileSpace.selectHyperslab(H5S_SELECT_SET, count,  start);
+        DataSpace memorySpace(1, count);
+        dataSet.write(buffer.data(), PredType::NATIVE_DOUBLE, memorySpace, fileSpace);
+    }
 
-        catch (FileIException &error) {
-            error.printErrorStack();
-            return -1;
-        }
-
-        // catch failure caused by the DataSet operations
-        catch (DataSetIException &error) {
-            error.printErrorStack();
-            return -1;
-        }
-
-        return 0;
+    void writeToFile(auto const &fieldStart, auto const &fieldCount, auto const &doubleStart, auto const &doubleCount) {
+        auto data = this->m_dataSets;
+        auto buffer = this->m_buffer;
+        writeFieldsToFile(data.inflatonField, buffer.phiValues, fieldStart, fieldCount);
+        // testing(data.inflatonField, buffer.phiValues, fieldStart,  fieldCount, "inflaton field");
+        writeFieldsToFile(data.energyDensity, buffer.energyDensityValues, fieldStart, fieldCount);
+        // testing(data.energyDensity, buffer.energyDensityValues, fieldStart,  fieldCount, "energy density");
+        writeFieldsToFile(data.energyOverDensity, buffer.energyOverdensityValues, fieldStart, fieldCount);
+        // testing(data.energyOverDensity, buffer.energyOverdensityValues, fieldStart,  fieldCount, "over density");
+        writeFieldsToFile(data.inflatonPotential, buffer.inflationPotentialValues, fieldStart, fieldCount);
+        // testing(data.inflatonPotential, buffer.inflationPotentialValues, fieldStart,  fieldCount, "potential");
+        writeDoubleToFile(data.averageEnergyDensity, buffer.averageEnergyDensity, doubleStart, doubleCount);
     }
 
 
-    void updateInflatonField(Scalar const &stepCount, Scalar const &timeDelta, Func &inflationPotential, Func &inflationPotentialDerivative, auto const &structVariables, int const bufferSize){
+    void updateInflatonField(Scalar const &stepCount, Scalar const &timeDelta, Func &inflationPotential, Func &inflationPotentialDerivative, auto const &structVariables, auto const &index){
         auto deltaPosition = Scalar(1)/(this->m_gridSize) * structVariables.m_scaleFactor;
         this->determineLaplacian(deltaPosition);
         this->leapfrog2ndOrder(this->m_phi, this->m_dPhi, this->m_d2Phi, timeDelta, [this, &inflationPotentialDerivative, &structVariables](){ return this->phiSecondDifferential(inflationPotentialDerivative, structVariables); });
         this->potentialKineticEnergyDensity(stepCount, inflationPotential, structVariables);
-        this->writeToHistory();
-        if (stepCount % bufferSize == 0) {
-            int readWrite = this->writeFieldsToFile(bufferSize);
-            if (readWrite != 0) {
-                std::cout << "Failed to write Data" << std::endl;
-            }
-        }
+        this->writeToBuffer(index);
     }
 };

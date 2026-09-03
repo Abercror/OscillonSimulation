@@ -2,109 +2,94 @@
 #include "InflatonFieldClass.hpp"
 #include "SimulationClass.hpp"
 #include "Traits.hpp"
+#include "SimulationDataSets.hpp"
+#include <H5Cpp.h>
 #include <iostream>
 #include <fstream>
 #include <chrono>
-#include "GlobalVariables.hpp"
+
 
 using namespace H5;
 
+std::string fileName = "simulationData.h5";
 std::string inflationModel = "T-Model";
-constexpr int gridSize = 100;
-constexpr double deltaTime = 0.001;
-constexpr int totalSteps = 1000;
+int constexpr gridSize = 100;
+double constexpr deltaTime = 0.001;
+int constexpr totalSteps = 1000;
+hsize_t constexpr bufferSize = 100;
 
 using inflatonFieldTypes = VectorTraits<double>;
 using spacetimeTypes = ScalarTraits<double>;
 
 
-InflatonField<inflatonFieldTypes>initialisingInflatonField(){
-    inflatonFieldTypes::StateType phi(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType dPhi(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType d2Phi(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType phiLaplacian(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType inflationPotential(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType inflationPotentialDerivative(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType energyDensity(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType energyOverdensity(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType kineticEnergyDensity(gridSize, gridSize, gridSize);
-    inflatonFieldTypes::StateType potentialEnergyDensity(gridSize, gridSize, gridSize);
-    inflatonFieldData<inflatonFieldTypes::StateType, inflatonFieldTypes::Scalar> history;
+SimulationDataSets fileCreation() {
 
-    InflatonField<inflatonFieldTypes> inflatonField(phi, dPhi, d2Phi, phiLaplacian, inflationPotential, inflationPotentialDerivative, energyDensity, energyOverdensity, kineticEnergyDensity, potentialEnergyDensity, gridSize, history);
+    H5File const file(fileName, H5F_ACC_TRUNC);
 
-    return inflatonField;
+    auto constexpr arraySize = gridSize*gridSize*gridSize;
+    hsize_t constexpr arrayLength = arraySize;
+    hsize_t constexpr numberOfSteps = totalSteps;
+
+    hsize_t fieldDimensions[2] = {
+        numberOfSteps, arrayLength
+    };
+
+    DataSpace const fieldSpace(2, fieldDimensions);
+
+    DataSet inflatonField = file.createDataSet("/inflatonField", PredType::NATIVE_DOUBLE, fieldSpace);
+    DataSet energyDensity = file.createDataSet("/energyDensity", PredType::NATIVE_DOUBLE, fieldSpace);
+    DataSet energyOverDensity = file.createDataSet("/energyOverDensity", PredType::NATIVE_DOUBLE, fieldSpace);
+    DataSet inflatonPotential = file.createDataSet("/inflatonPotential", PredType::NATIVE_DOUBLE, fieldSpace);
+
+    hsize_t doubleDimensions[1] {
+        numberOfSteps
+    };
+
+    DataSpace const doubleSpace(1, doubleDimensions);
+
+    DataSet averageEnergyDensity = file.createDataSet("/averageEnergyDensity", PredType::NATIVE_DOUBLE, doubleSpace);
+    DataSet scaleFactor = file.createDataSet("/scaleFactor", PredType::NATIVE_DOUBLE, doubleSpace);
+    DataSet scaleFactorDerivative = file.createDataSet("/scaleFactorDerivative", PredType::NATIVE_DOUBLE, doubleSpace);
+    DataSet scaleFactorSecondDerivative = file.createDataSet("/scaleFactorSecondDerivative", PredType::NATIVE_DOUBLE, doubleSpace);
+    DataSet hubbleParameter = file.createDataSet("/hubbleParameter", PredType::NATIVE_DOUBLE, doubleSpace);
+
+    SimulationDataSets data;
+
+    data.inflatonField = inflatonField;
+    data.energyDensity = energyDensity;
+    data.energyOverDensity = energyOverDensity;
+    data.inflatonPotential = inflatonPotential;
+    data.averageEnergyDensity = averageEnergyDensity;
+    data.scaleFactor = scaleFactor;
+    data.scaleFactorDerivative = scaleFactorDerivative;
+    data.scaleFactorSecondDerivative = scaleFactorSecondDerivative;
+    data.hubbleParameter = hubbleParameter;
+
+    return data;
+
 }
 
-
-SpacetimeParameters<spacetimeTypes> initialisingSpacetime(){
-    spacetimeTypes::StateType scaleFactor = 0.0;
-    spacetimeTypes::StateType dScaleFactor = 0.0;
-    spacetimeTypes::StateType d2ScaleFactor = 0.0;
-    spacetimeTypes::StateType hubbleParameter = 0.0;
-
-    SpacetimeParametersData<spacetimeTypes::Scalar> history;
-
-    SpacetimeParameters<spacetimeTypes> spacetime(scaleFactor, dScaleFactor, d2ScaleFactor, hubbleParameter, history);
-
-    return spacetime;
-}
-
-
-int fileCreation() {
-
-    try {
-        Exception::dontPrint();
-
-        H5File file(FILE_NAME, H5F_ACC_TRUNC);
-
-        Group group(file.createGroup(GROUP_NAME));
-    }
-
-    catch (FileIException &error) {
-        error.printErrorStack();
-        return -1;
-    }
-
-    catch (GroupIException &error) {
-        error.printErrorStack();
-        return -1;
-    }
-
-    return 0;
-}
-
-// int dataDetCreation() {
-//     try {
-//         Exception::dontPrint();
-//
-//         hsize_t arrayLength = gridSize*gridSize*gridSize;
-//
-//         hsize_t dims[1] = {
-//             arrayLength
-//         };
-//
-//         DataSpace dataspace(1, arrayLength);
-//
-//         H5File file(FILE_NAME, H5F_ACC_RDWR);
-//         DataSet dataset = file.createDataSet(DATASET_NAME, PredType::NATIVE_DOUBLE, dataspace);
-//
-//     }
-// }
 
 
 int main(){
 
     std::cout << "Starting" << std::endl;
-    auto start = std::chrono::high_resolution_clock::now();
+    auto const start = std::chrono::high_resolution_clock::now();
 
-    auto inflatonField = initialisingInflatonField();
-    auto spacetime = initialisingSpacetime();
+    SimulationDataSets dataSets = fileCreation();
 
+    std::cout << "created files" << std::endl;
 
-    Simulation<inflatonFieldTypes, spacetimeTypes> Sim(inflatonField, spacetime, deltaTime, inflationModel);
+    InflatonField<inflatonFieldTypes> inflatonField(gridSize, dataSets);
+    SpacetimeParameters<spacetimeTypes> spacetime(dataSets);
 
-    Sim.run(totalSteps);
+    std::cout << "initialised objects" << std::endl;
+
+    Simulation<inflatonFieldTypes, spacetimeTypes> Sim(inflatonField, spacetime, deltaTime, inflationModel, gridSize);
+
+    std::cout << "initialised simulation" << std::endl;
+
+    Sim.run(totalSteps, bufferSize);
 
 
     std::cout << "Simulation Complete" << std::endl;

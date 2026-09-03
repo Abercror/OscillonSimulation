@@ -1,21 +1,30 @@
 #pragma once
-#include <vector>
 #include <cstddef>
+#include <vector>
+#include <array>
 
 template <typename T>
 struct lattice {
     std::size_t Nx, Ny, Nz;
-    std::size_t ySkip, zSkip;
     std::vector<T> field;
 
-    lattice(std::size_t const x, std::size_t const y, std::size_t const z): Nx(x), Ny(y), Nz(z), ySkip(x), zSkip(x * y), field(x*y*z) {}
+    lattice(): Nx(0), Ny(0), Nz(0), field(0) {};
+    lattice(std::size_t const x, std::size_t const y, std::size_t const z): Nx(x), Ny(y), Nz(z), field(x*y*z) {}
+
+    T* data() {
+        return field.data();
+    }
+
+    T const* data() const {
+        return field.data();
+    }
 
     T const &operator()(std::size_t const x, std::size_t const y, std::size_t const z) const {
-        return field[x + ySkip * y + zSkip * z];
+        return field[x + Nx * (y + Ny * z)];
     }
 
     T &operator()(std::size_t const x, std::size_t const y, std::size_t const z) {
-        return field[x + ySkip * y + zSkip * z];
+        return field[x + Nx * ( y + Ny * z)];
     }
 
     T const &operator[](std::size_t const x) const {

@@ -42,21 +42,5 @@ public:
             dy += ddy * halfDelta;
         }
 
-        // if constexpr (!std::is_same_v<std::decay_t<StateType>, Scalar>) {
-        //     for (std::size_t i = 0; i < y.field.size(); ++i){
-        //         secondDifferentialFunc();
-        //         dy[i] += ddy[i] * halfDelta;
-        //         y[i] += dy[i] * delta;
-        //         secondDifferentialFunc();
-        //         dy[i] += ddy[i] * halfDelta;
-        //     }
-        // }
-        // else {
-        //     secondDifferentialFunc();
-        //     dy += ddy * halfDelta;
-        //     y += dy * delta;
-        //     secondDifferentialFunc();
-        //     dy += ddy * halfDelta;
-        // }
     }
 };

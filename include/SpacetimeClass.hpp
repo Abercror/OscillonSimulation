@@ -1,7 +1,9 @@
 #pragma once
 #include "NumericalMethodsClass.hpp"
+#include "SimulationDataSets.hpp"
 #include <vector>
 #include <cmath>
+#include <H5Cpp.h>
 #include <iostream>
 
 
@@ -12,11 +14,18 @@ struct SpacetimeParametersData{
     std::vector<Scalar> d2ScaleFactorValues;
     std::vector<Scalar> hubbleParameterValues;
 
-    void reserveMemory(Scalar const &totalSteps){
-        scaleFactorValues.reserve(totalSteps);
-        dScaleFactorValues.reserve(totalSteps);
-        d2ScaleFactorValues.reserve(totalSteps);
-        hubbleParameterValues.reserve(totalSteps);
+    void resizeBuffer(hsize_t const &bufferSize){
+        scaleFactorValues.resize(bufferSize);
+        dScaleFactorValues.resize(bufferSize);
+        d2ScaleFactorValues.resize(bufferSize);
+        hubbleParameterValues.resize(bufferSize);
+    }
+
+    void wipeBuffer() {
+        scaleFactorValues.clear();
+        dScaleFactorValues.clear();
+        d2ScaleFactorValues.clear();
+        hubbleParameterValues.clear();
     }
 };
 
@@ -32,24 +41,34 @@ private:
     Scalar m_dScaleFactor;
     Scalar m_d2ScaleFactor;
     Scalar m_hubbleParameter;
-    SpacetimeParametersData<Scalar> m_history;
+    SpacetimeParametersData<Scalar> m_buffer;
+    SimulationDataSets m_dataSets;
 
 public:
+    SpacetimeParameters(SimulationDataSets &dataSets) {
+        StateType scaleFactor = 0.0;
+        StateType dScaleFactor = 0.0;
+        StateType d2ScaleFactor = 0.0;
+        StateType hubbleParameter = 0.0;
+        SpacetimeParametersData<Scalar> buffer;
 
-    SpacetimeParameters(
-        Scalar scaleFactor,
-        Scalar dScaleFactor,
-        Scalar d2ScaleFactor,
-        Scalar hubbleParameter,
-        SpacetimeParametersData<Scalar> history): m_scaleFactor(scaleFactor), m_dScaleFactor(dScaleFactor), m_d2ScaleFactor(d2ScaleFactor), m_hubbleParameter(hubbleParameter), m_history(history) {}
+        this->m_scaleFactor = scaleFactor;
+        this->m_dScaleFactor = dScaleFactor;
+        this->m_d2ScaleFactor = d2ScaleFactor;
+        this->m_hubbleParameter = hubbleParameter;
+        this->m_buffer = buffer;
+
+        this->m_dataSets = dataSets;
+
+    }
 
 
     Scalar getScaleFactor() const { return this->m_scaleFactor; }
     Scalar getHubbleParameter() const { return this->m_hubbleParameter; }
-    SpacetimeParameters<Scalar> getHistory() const { return this->m_history; }
+    SpacetimeParametersData<Scalar> getBuffer() const { return this->m_buffer; }
 
-    void setLength(Scalar const &totalSteps){
-        this->m_history.reserveMemory(totalSteps);
+    void setLength(hsize_t const &bufferSize){
+        this->m_buffer.resizeBuffer(bufferSize);
     }
 
     auto accelerationEquationSecondDerivative(auto const &structVariables){
@@ -66,16 +85,33 @@ public:
         // this->m_hubbleParameter = this->m_dScaleFactor / this->m_scaleFactor;
     }
 
-    void writeToHistory(){
-        this->m_history.scaleFactorValues.push_back(this->m_scaleFactor);
-        this->m_history.dScaleFactorValues.push_back(this->m_dScaleFactor);
-        this->m_history.d2ScaleFactorValues.push_back(this->m_d2ScaleFactor);
-        this->m_history.hubbleParameterValues.push_back(this->m_hubbleParameter);
+    void writeToBuffer(auto const &index){
+        this->m_buffer.scaleFactorValues[index] = this->m_scaleFactor;
+        this->m_buffer.dScaleFactorValues[index] = this->m_dScaleFactor;
+        this->m_buffer.d2ScaleFactorValues[index] = this->m_d2ScaleFactor;
+        this->m_buffer.hubbleParameterValues[index] = this->m_hubbleParameter;
+    }
+    
+    void writeDoubleToFile(DataSet &dataSet, auto const &buffer, auto const &start, auto const &count) {
+        DataSpace fileSpace = dataSet.getSpace();
+        fileSpace.selectHyperslab(H5S_SELECT_SET, count, start);
+        DataSpace memorySpace(1, count);
+        dataSet.write(buffer.data(), PredType::NATIVE_DOUBLE, memorySpace, fileSpace);
     }
 
-    void updateSpacetime(Scalar const &timeDelta, auto const &structVariables){
+    void writeToFile(auto const &doubleStart, auto const &doubleCount) {
+        auto data = this->m_dataSets;
+        auto buffer = this->m_buffer;
+        writeDoubleToFile(data.scaleFactor, buffer.scaleFactorValues, doubleStart, doubleCount);
+        writeDoubleToFile(data.scaleFactorDerivative, buffer.dScaleFactorValues, doubleStart, doubleCount);
+        writeDoubleToFile(data.scaleFactorSecondDerivative, buffer.d2ScaleFactorValues, doubleStart, doubleCount);
+        writeDoubleToFile(data.hubbleParameter, buffer.hubbleParameterValues, doubleStart, doubleCount);
+    }
+
+    void updateSpacetime(Scalar const &timeDelta, auto const &structVariables, auto const &index){
         this->hubbleParameter(structVariables.m_energyDensity);
         this->leapfrog2ndOrder(this->m_scaleFactor, this->m_dScaleFactor, this->m_d2ScaleFactor, timeDelta, [this, &structVariables](){ return this->accelerationEquationSecondDerivative(structVariables);});
-        this->writeToHistory();
+        this->writeToBuffer(index);
     }
+
 };

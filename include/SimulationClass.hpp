@@ -22,9 +22,21 @@ private:
     Func m_inflationPotentialDerivative;
     Scalar m_timeDelta;
     std::string m_inflationModel;
+    int m_gridSize;
 
 public:
-    Simulation(InflatonField<VectorTraits> &inflatonField, SpacetimeParameters<ScalarTraits> &spacetimeParameters, Scalar timeDelta, std::string const &inflationModel): m_inflatonField(inflatonField), m_spacetimeParameters(spacetimeParameters), m_timeDelta(timeDelta), m_inflationModel(inflationModel) {}
+    Simulation(
+        InflatonField<VectorTraits> &inflatonField,
+        SpacetimeParameters<ScalarTraits> &spacetimeParameters,
+        Scalar timeDelta,
+        std::string const &inflationModel,
+        int const gridSize
+        ):
+    m_inflatonField(inflatonField),
+    m_spacetimeParameters(spacetimeParameters),
+    m_timeDelta(timeDelta),
+    m_inflationModel(inflationModel),
+    m_gridSize(gridSize) {}
 
     void inflationaryPotentialSelector(){
         const std::unordered_map<std::string, Func> inflationaryPotentials = {
@@ -42,20 +54,40 @@ public:
     }
 
 
-    void run(Scalar const &totalSteps){
+    void run(int const &totalSteps, hsize_t const &bufferSize){
+        std::cout << "entered run function" << std::endl;
+
         InflatonSpacetimeVariables<Scalar> structVariables;
+
         auto &inflatonField = this->m_inflatonField;
         auto &spacetimeParameters = this->m_spacetimeParameters;
+
         this->inflationaryPotentialSelector();
-        inflatonField.setLength(totalSteps);
-        spacetimeParameters.setLength(totalSteps);
+        inflatonField.setLength(bufferSize);
+        spacetimeParameters.setLength(bufferSize);
 
-        for(Scalar stepCount = 0; stepCount < totalSteps; ++stepCount){
+        hsize_t const arrayLength = m_gridSize * m_gridSize * m_gridSize;
+
+        hsize_t fieldStart[2] = {0, 0};
+        hsize_t fieldCount[2] = {1, arrayLength};
+        hsize_t doubleStart[1] = {0};
+        hsize_t doubleCount[1] = {bufferSize};
+        hsize_t index = 0;
+
+        for (int stepCount = 1; stepCount < totalSteps; ++stepCount){
             structVariables.getInflatonSpacetimeVariables(inflatonField, spacetimeParameters);
+            spacetimeParameters.updateSpacetime(this->m_timeDelta, structVariables, index);
+            inflatonField.updateInflatonField(stepCount, this->m_timeDelta, this->m_inflationPotential, this->m_inflationPotentialDerivative, structVariables, index);
 
-            spacetimeParameters.updateSpacetime(this->m_timeDelta, structVariables);
+            if (stepCount % bufferSize == 0) {
+                inflatonField.writeToFile(fieldStart, fieldCount, doubleStart, doubleCount);
+                spacetimeParameters.writeToFile(doubleStart, doubleCount);
+                fieldStart[0] += bufferSize;
+                doubleStart[0] += bufferSize;
+            }
 
-            inflatonField.updateInflatonField(stepCount, this->m_timeDelta, this->m_inflationPotential, this->m_inflationPotentialDerivative, structVariables);
+            index = (index + 1) % bufferSize;
+
         }
     }
 };
