@@ -243,19 +243,16 @@ public:
         // testing(data.inflatonField, buffer.phiValues, fieldStart,  fieldCount, "inflaton field");
         writeFieldsToFile(data.energyDensity, buffer.energyDensityValues, fieldStart, fieldCount);
         // testing(data.energyDensity, buffer.energyDensityValues, fieldStart,  fieldCount, "energy density");
-        writeFieldsToFile(data.energyOverDensity, buffer.energyOverdensityValues, fieldStart, fieldCount);
-        // testing(data.energyOverDensity, buffer.energyOverdensityValues, fieldStart,  fieldCount, "over density");
         writeFieldsToFile(data.inflatonPotential, buffer.inflationPotentialValues, fieldStart, fieldCount);
         // testing(data.inflatonPotential, buffer.inflationPotentialValues, fieldStart,  fieldCount, "potential");
         writeDoubleToFile(data.averageEnergyDensity, buffer.averageEnergyDensity, doubleStart, doubleCount);
     }
 
 
-    void updateInflatonField(Scalar const &stepCount, Scalar const &timeDelta, Func &inflationPotential, Func &inflationPotentialDerivative, auto const &structVariables, auto const &index){
+    void updateInflatonField(Scalar const &stepCount, Scalar const &timeDelta, Func &inflationPotential, Func &inflationPotentialDerivative, auto const &structVariables){
         auto deltaPosition = Scalar(1)/(this->m_gridSize) * structVariables.m_scaleFactor;
         this->determineLaplacian(deltaPosition);
         this->leapfrog2ndOrder(this->m_phi, this->m_dPhi, this->m_d2Phi, timeDelta, [this, &inflationPotentialDerivative, &structVariables](){ return this->phiSecondDifferential(inflationPotentialDerivative, structVariables); });
         this->potentialKineticEnergyDensity(stepCount, inflationPotential, structVariables);
-        this->writeToBuffer(index);
     }
 };

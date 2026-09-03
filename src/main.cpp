@@ -15,8 +15,9 @@ std::string fileName = "simulationData.h5";
 std::string inflationModel = "T-Model";
 int constexpr gridSize = 100;
 double constexpr deltaTime = 0.001;
-int constexpr totalSteps = 1000;
+int constexpr totalSteps = 10000;
 hsize_t constexpr bufferSize = 100;
+hsize_t constexpr writingInterval = 20;
 
 using inflatonFieldTypes = VectorTraits<double>;
 using spacetimeTypes = ScalarTraits<double>;
@@ -28,21 +29,20 @@ SimulationDataSets fileCreation() {
 
     auto constexpr arraySize = gridSize*gridSize*gridSize;
     hsize_t constexpr arrayLength = arraySize;
-    hsize_t constexpr numberOfSteps = totalSteps;
+    hsize_t constexpr numberOfTimeSteps = totalSteps/writingInterval;
 
     hsize_t fieldDimensions[2] = {
-        numberOfSteps, arrayLength
+        numberOfTimeSteps, arrayLength
     };
 
     DataSpace const fieldSpace(2, fieldDimensions);
 
     DataSet inflatonField = file.createDataSet("/inflatonField", PredType::NATIVE_DOUBLE, fieldSpace);
     DataSet energyDensity = file.createDataSet("/energyDensity", PredType::NATIVE_DOUBLE, fieldSpace);
-    DataSet energyOverDensity = file.createDataSet("/energyOverDensity", PredType::NATIVE_DOUBLE, fieldSpace);
     DataSet inflatonPotential = file.createDataSet("/inflatonPotential", PredType::NATIVE_DOUBLE, fieldSpace);
 
     hsize_t doubleDimensions[1] {
-        numberOfSteps
+        numberOfTimeSteps
     };
 
     DataSpace const doubleSpace(1, doubleDimensions);
@@ -57,7 +57,6 @@ SimulationDataSets fileCreation() {
 
     data.inflatonField = inflatonField;
     data.energyDensity = energyDensity;
-    data.energyOverDensity = energyOverDensity;
     data.inflatonPotential = inflatonPotential;
     data.averageEnergyDensity = averageEnergyDensity;
     data.scaleFactor = scaleFactor;
@@ -89,7 +88,7 @@ int main(){
 
     std::cout << "initialised simulation" << std::endl;
 
-    Sim.run(totalSteps, bufferSize);
+    Sim.run(totalSteps, bufferSize, writingInterval);
 
 
     std::cout << "Simulation Complete" << std::endl;

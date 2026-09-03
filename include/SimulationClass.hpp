@@ -54,7 +54,7 @@ public:
     }
 
 
-    void run(int const &totalSteps, hsize_t const &bufferSize){
+    void run(int const &totalSteps, hsize_t const &bufferSize, hsize_t const &writingInterval){
         std::cout << "entered run function" << std::endl;
 
         InflatonSpacetimeVariables<Scalar> structVariables;
@@ -68,6 +68,7 @@ public:
 
         hsize_t const arrayLength = m_gridSize * m_gridSize * m_gridSize;
 
+        hsize_t const bufferWritingInterval = bufferSize * writingInterval;
         hsize_t fieldStart[2] = {0, 0};
         hsize_t fieldCount[2] = {1, arrayLength};
         hsize_t doubleStart[1] = {0};
@@ -76,18 +77,21 @@ public:
 
         for (int stepCount = 1; stepCount < totalSteps; ++stepCount){
             structVariables.getInflatonSpacetimeVariables(inflatonField, spacetimeParameters);
-            spacetimeParameters.updateSpacetime(this->m_timeDelta, structVariables, index);
-            inflatonField.updateInflatonField(stepCount, this->m_timeDelta, this->m_inflationPotential, this->m_inflationPotentialDerivative, structVariables, index);
+            spacetimeParameters.updateSpacetime(this->m_timeDelta, structVariables);
+            inflatonField.updateInflatonField(stepCount, this->m_timeDelta, this->m_inflationPotential, this->m_inflationPotentialDerivative, structVariables);
 
-            if (stepCount % bufferSize == 0) {
+            if (stepCount % writingInterval == 0) {
+                spacetimeParameters.writeToBuffer(index);
+                inflatonField.writeToBuffer(index);
+                index = (index + 1) % bufferSize;
+            }
+
+            if (stepCount % bufferWritingInterval == 0) {
                 inflatonField.writeToFile(fieldStart, fieldCount, doubleStart, doubleCount);
                 spacetimeParameters.writeToFile(doubleStart, doubleCount);
                 fieldStart[0] += bufferSize;
                 doubleStart[0] += bufferSize;
             }
-
-            index = (index + 1) % bufferSize;
-
         }
     }
 };

@@ -6,7 +6,6 @@ using namespace H5;
 struct SimulationDataSets {
     DataSet inflatonField;
     DataSet energyDensity;
-    DataSet energyOverDensity;
     DataSet inflatonPotential;
     DataSet averageEnergyDensity;
     DataSet scaleFactor;

@@ -108,10 +108,9 @@ public:
         writeDoubleToFile(data.hubbleParameter, buffer.hubbleParameterValues, doubleStart, doubleCount);
     }
 
-    void updateSpacetime(Scalar const &timeDelta, auto const &structVariables, auto const &index){
+    void updateSpacetime(Scalar const &timeDelta, auto const &structVariables){
         this->hubbleParameter(structVariables.m_energyDensity);
         this->leapfrog2ndOrder(this->m_scaleFactor, this->m_dScaleFactor, this->m_d2ScaleFactor, timeDelta, [this, &structVariables](){ return this->accelerationEquationSecondDerivative(structVariables);});
-        this->writeToBuffer(index);
     }
 
 };
