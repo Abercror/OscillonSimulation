@@ -6,6 +6,7 @@
 #include "InflatonSpacetimeVariablesStruct.hpp"
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 
 template <typename VectorTraits, typename ScalarTraits>
@@ -20,6 +21,7 @@ private:
     SpacetimeParameters<ScalarTraits> m_spacetimeParameters;
     Func m_inflationPotential;
     Func m_inflationPotentialDerivative;
+    Func m_inflationPotentialSecondDerivative;
     Scalar m_timeDelta;
     std::string m_inflationModel;
     int m_gridSize;
@@ -29,14 +31,20 @@ public:
         InflatonField<VectorTraits> &inflatonField,
         SpacetimeParameters<ScalarTraits> &spacetimeParameters,
         Scalar timeDelta,
-        std::string const &inflationModel,
+        std::string inflationModel,
         int const gridSize
         ):
     m_inflatonField(inflatonField),
     m_spacetimeParameters(spacetimeParameters),
     m_timeDelta(timeDelta),
-    m_inflationModel(inflationModel),
+    m_inflationModel(std::move(inflationModel)),
     m_gridSize(gridSize) {}
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Inflationary Model Selector
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void inflationaryPotentialSelector(){
         const std::unordered_map<std::string, Func> inflationaryPotentials = {
@@ -45,16 +53,28 @@ public:
             {"Axion Cosine", InflationPotentials<StateType, Scalar>::axionCosine},
         };
         const std::unordered_map<std::string, Func> inflationaryPotentialDerivatives = {
-            {"T-Model", DifferentiatedInflationPotentials<StateType, Scalar>::tModel},
-            {"E-model", DifferentiatedInflationPotentials<StateType, Scalar>::eModel},
-            {"Axion Cosine", DifferentiatedInflationPotentials<StateType, Scalar>::axionCosine},
+            {"T-Model", DifferentialInflationPotentials<StateType, Scalar>::tModel},
+            {"E-model", DifferentialInflationPotentials<StateType, Scalar>::eModel},
+            {"Axion Cosine", DifferentialInflationPotentials<StateType, Scalar>::axionCosine},
+        };
+        const std::unordered_map<std::string, Func> inflationaryPotentialSecondDerivatives = {
+            {"T-Model", SecondDifferentialInflationPotentials<StateType, Scalar>::tModel},
+            {"E-model", SecondDifferentialInflationPotentials<StateType, Scalar>::eModel},
+            {"Axion Cosine", SecondDifferentialInflationPotentials<StateType, Scalar>::axionCosine},
         };
         this->m_inflationPotential = inflationaryPotentials.at(this->m_inflationModel);
         this->m_inflationPotentialDerivative = inflationaryPotentialDerivatives.at(this->m_inflationModel);
+        this->m_inflationPotentialSecondDerivative = inflationaryPotentialSecondDerivatives.at(this->m_inflationModel);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Run Function
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void run(int const &totalSteps, hsize_t const &bufferSize, hsize_t const &writingInterval){
+
+    void run(int const &totalSteps, Scalar const &initialPhiValue, hsize_t const &bufferSize, hsize_t const &writingInterval){
         std::cout << "entered run function" << std::endl;
 
         InflatonSpacetimeVariables<Scalar> structVariables;
@@ -63,11 +83,15 @@ public:
         auto &spacetimeParameters = this->m_spacetimeParameters;
 
         this->inflationaryPotentialSelector();
+
         inflatonField.setLength(bufferSize);
         spacetimeParameters.setLength(bufferSize);
 
-        hsize_t const arrayLength = m_gridSize * m_gridSize * m_gridSize;
+        inflatonField.initialConditions(initialPhiValue, this->m_inflationPotential, this->m_inflationPotentialDerivative, this->m_inflationPotentialSecondDerivative);
+        Scalar averageInflatonPotential = inflatonField.getAverageInflationPotential();
+        spacetimeParameters.initialConditions(averageInflatonPotential);
 
+        hsize_t const arrayLength = m_gridSize * m_gridSize * m_gridSize;
         hsize_t const bufferWritingInterval = bufferSize * writingInterval;
         hsize_t fieldStart[2] = {0, 0};
         hsize_t fieldCount[2] = {1, arrayLength};

@@ -9,23 +9,35 @@
 #include <chrono>
 
 
-using namespace H5;
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// Simulation Configuration
+///
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 std::string fileName = "simulationData.h5";
 std::string inflationModel = "T-Model";
 int constexpr gridSize = 100;
 double constexpr deltaTime = 0.001;
-int constexpr totalSteps = 10000;
-hsize_t constexpr bufferSize = 100;
-hsize_t constexpr writingInterval = 20;
+int constexpr totalSteps = 1000;
+hsize_t constexpr bufferSize = 10;
+hsize_t constexpr writingInterval = 1;
+double initialPhiValue = 10;
 
 using inflatonFieldTypes = VectorTraits<double>;
 using spacetimeTypes = ScalarTraits<double>;
 
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// HDF5 File Setup
+///
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 SimulationDataSets fileCreation() {
 
-    H5File const file(fileName, H5F_ACC_TRUNC);
+    H5::H5File const file(fileName, H5F_ACC_TRUNC);
 
     auto constexpr arraySize = gridSize*gridSize*gridSize;
     hsize_t constexpr arrayLength = arraySize;
@@ -35,23 +47,23 @@ SimulationDataSets fileCreation() {
         numberOfTimeSteps, arrayLength
     };
 
-    DataSpace const fieldSpace(2, fieldDimensions);
+    H5::DataSpace const fieldSpace(2, fieldDimensions);
 
-    DataSet inflatonField = file.createDataSet("/inflatonField", PredType::NATIVE_DOUBLE, fieldSpace);
-    DataSet energyDensity = file.createDataSet("/energyDensity", PredType::NATIVE_DOUBLE, fieldSpace);
-    DataSet inflatonPotential = file.createDataSet("/inflatonPotential", PredType::NATIVE_DOUBLE, fieldSpace);
+    H5::DataSet inflatonField = file.createDataSet("/inflatonField", H5::PredType::NATIVE_DOUBLE, fieldSpace);
+    H5::DataSet energyDensity = file.createDataSet("/energyDensity", H5::PredType::NATIVE_DOUBLE, fieldSpace);
+    H5::DataSet inflatonPotential = file.createDataSet("/inflatonPotential", H5::PredType::NATIVE_DOUBLE, fieldSpace);
 
     hsize_t doubleDimensions[1] {
         numberOfTimeSteps
     };
 
-    DataSpace const doubleSpace(1, doubleDimensions);
+    H5::DataSpace const doubleSpace(1, doubleDimensions);
 
-    DataSet averageEnergyDensity = file.createDataSet("/averageEnergyDensity", PredType::NATIVE_DOUBLE, doubleSpace);
-    DataSet scaleFactor = file.createDataSet("/scaleFactor", PredType::NATIVE_DOUBLE, doubleSpace);
-    DataSet scaleFactorDerivative = file.createDataSet("/scaleFactorDerivative", PredType::NATIVE_DOUBLE, doubleSpace);
-    DataSet scaleFactorSecondDerivative = file.createDataSet("/scaleFactorSecondDerivative", PredType::NATIVE_DOUBLE, doubleSpace);
-    DataSet hubbleParameter = file.createDataSet("/hubbleParameter", PredType::NATIVE_DOUBLE, doubleSpace);
+    H5::DataSet averageEnergyDensity = file.createDataSet("/averageEnergyDensity", H5::PredType::NATIVE_DOUBLE, doubleSpace);
+    H5::DataSet scaleFactor = file.createDataSet("/scaleFactor", H5::PredType::NATIVE_DOUBLE, doubleSpace);
+    H5::DataSet scaleFactorDerivative = file.createDataSet("/scaleFactorDerivative", H5::PredType::NATIVE_DOUBLE, doubleSpace);
+    H5::DataSet scaleFactorSecondDerivative = file.createDataSet("/scaleFactorSecondDerivative", H5::PredType::NATIVE_DOUBLE, doubleSpace);
+    H5::DataSet hubbleParameter = file.createDataSet("/hubbleParameter", H5::PredType::NATIVE_DOUBLE, doubleSpace);
 
     SimulationDataSets data;
 
@@ -68,6 +80,11 @@ SimulationDataSets fileCreation() {
 
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///
+/// Main Function
+///
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 int main(){
@@ -88,12 +105,11 @@ int main(){
 
     std::cout << "initialised simulation" << std::endl;
 
-    Sim.run(totalSteps, bufferSize, writingInterval);
-
+    Sim.run(totalSteps, initialPhiValue, bufferSize, writingInterval);
 
     std::cout << "Simulation Complete" << std::endl;
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = duration_cast<std::chrono::seconds>(stop - start);
+    const auto stop = std::chrono::high_resolution_clock::now();
+    const auto duration = duration_cast<std::chrono::seconds>(stop - start);
     std::cout << "Simulation Time: " << duration.count() << "seconds" << std::endl;
 
     return 1;

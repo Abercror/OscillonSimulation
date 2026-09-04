@@ -45,11 +45,18 @@ private:
     SimulationDataSets m_dataSets;
 
 public:
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Constructor
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     SpacetimeParameters(SimulationDataSets &dataSets) {
-        StateType scaleFactor = 0.0;
+        StateType scaleFactor = 1;
         StateType dScaleFactor = 0.0;
         StateType d2ScaleFactor = 0.0;
-        StateType hubbleParameter = 0.0;
+        StateType hubbleParameter = 1;
         SpacetimeParametersData<Scalar> buffer;
 
         this->m_scaleFactor = scaleFactor;
@@ -59,8 +66,13 @@ public:
         this->m_buffer = buffer;
 
         this->m_dataSets = dataSets;
-
     }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Getter and Setter Functions
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
     Scalar getScaleFactor() const { return this->m_scaleFactor; }
@@ -71,7 +83,24 @@ public:
         this->m_buffer.resizeBuffer(bufferSize);
     }
 
-    auto accelerationEquationSecondDerivative(auto const &structVariables){
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Initial Conditions
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void initialConditions(Scalar const &averagePotential) {
+        this->m_hubbleParameter = std::sqrt(averagePotential / 3);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Equations of Motion Functions
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    void accelerationEquationSecondDerivative(auto const &structVariables){
         Scalar const &scaleFactor = this->m_scaleFactor;
         auto &averagePhiDerivative = structVariables.m_averagePhiDerivative;
         auto &averagePressure = structVariables.m_averagePressure;
@@ -82,8 +111,13 @@ public:
 
     void hubbleParameter(Scalar const &energyDensity){
         this->m_hubbleParameter = std::sqrt(energyDensity/Scalar(3));
-        // this->m_hubbleParameter = this->m_dScaleFactor / this->m_scaleFactor;
     }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Writing Data
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void writeToBuffer(auto const &index){
         this->m_buffer.scaleFactorValues[index] = this->m_scaleFactor;
@@ -92,11 +126,11 @@ public:
         this->m_buffer.hubbleParameterValues[index] = this->m_hubbleParameter;
     }
     
-    void writeDoubleToFile(DataSet &dataSet, auto const &buffer, auto const &start, auto const &count) {
-        DataSpace fileSpace = dataSet.getSpace();
+    void writeDoubleToFile(H5::DataSet &dataSet, auto const &buffer, auto const &start, auto const &count) {
+        H5::DataSpace fileSpace = dataSet.getSpace();
         fileSpace.selectHyperslab(H5S_SELECT_SET, count, start);
-        DataSpace memorySpace(1, count);
-        dataSet.write(buffer.data(), PredType::NATIVE_DOUBLE, memorySpace, fileSpace);
+        H5::DataSpace memorySpace(1, count);
+        dataSet.write(buffer.data(), H5::PredType::NATIVE_DOUBLE, memorySpace, fileSpace);
     }
 
     void writeToFile(auto const &doubleStart, auto const &doubleCount) {
@@ -107,6 +141,12 @@ public:
         writeDoubleToFile(data.scaleFactorSecondDerivative, buffer.d2ScaleFactorValues, doubleStart, doubleCount);
         writeDoubleToFile(data.hubbleParameter, buffer.hubbleParameterValues, doubleStart, doubleCount);
     }
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ///
+    /// Update Function
+    ///
+    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void updateSpacetime(Scalar const &timeDelta, auto const &structVariables){
         this->hubbleParameter(structVariables.m_energyDensity);
